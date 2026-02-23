@@ -14,3 +14,12 @@ body {
 html {
   overscroll-behavior: none;
 }
+
+/* Ensure all interactive elements show pointer cursor */
+button,
+[role="button"],
+a,
+input[type="submit"],
+input[type="button"] {
+  cursor: pointer;
+}
