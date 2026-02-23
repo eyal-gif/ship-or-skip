@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 export default function EmailGate() {
   const params = useParams();
@@ -10,61 +10,56 @@ export default function EmailGate() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleGoogleSignIn = async () => {
-    setLoading(true);
-    setError("");
-
+  // Check if user just came back from Google sign-in
+  const checkSession = useCallback(async () => {
     try {
-      // Open Google OAuth popup
-      const width = 500;
-      const height = 600;
-      const left = window.screenX + (window.outerWidth - width) / 2;
-      const top = window.screenY + (window.outerHeight - height) / 2;
-
-      const popup = window.open(
-        `/api/auth/signin/google?callbackUrl=${encodeURIComponent(`/session/${sessionId}/email?callback=true`)}`,
-        "google-signin",
-        `width=${width},height=${height},left=${left},top=${top}`
-      );
-
-      // Poll for popup close
-      const interval = setInterval(async () => {
-        if (popup?.closed) {
-          clearInterval(interval);
-          // Check if we got the session
-          try {
-            const sessionRes = await fetch("/api/auth/session");
-            const session = await sessionRes.json();
-
-            if (session?.user?.email) {
-              await createLeadAndReport(session.user.email, session.user.name, session.user.image);
-            } else {
-              setLoading(false);
-            }
-          } catch {
-            setLoading(false);
-          }
-        }
-      }, 500);
+      const sessionRes = await fetch("/api/auth/session");
+      const session = await sessionRes.json();
+      if (session?.user?.email) {
+        await createLeadAndReport(session.user.email, session.user.name, session.user.image);
+        return true;
+      }
     } catch {
-      setError("Sign-in failed. Please try again.");
-      setLoading(false);
+      // Not signed in yet
     }
+    return false;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId]);
+
+  useEffect(() => {
+    // Check on mount if already authenticated (e.g. came back from OAuth redirect)
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("callback") === "true") {
+      setLoading(true);
+      checkSession().then((ok) => {
+        if (!ok) setLoading(false);
+      });
+    }
+  }, [checkSession]);
+
+  const handleGoogleSignIn = () => {
+    // NextAuth v5 requires POST with CSRF token for sign-in.
+    // The simplest approach: redirect to the built-in sign-in page with provider hint
+    const callbackUrl = `/session/${sessionId}/email?callback=true`;
+    window.location.href = `/api/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`;
   };
 
-  const createLeadAndReport = async (email: string, name?: string, image?: string) => {
+  const createLeadAndReport = async (email: string, name?: string | null, image?: string | null) => {
+    setLoading(true);
     try {
-      // Create lead
       const leadRes = await fetch("/api/lead", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, email, name, image }),
+        body: JSON.stringify({
+          sessionId,
+          email,
+          name: name || null,
+          image: image || null,
+        }),
       });
 
       if (!leadRes.ok) throw new Error("Failed to create lead");
       const { leadId } = await leadRes.json();
-
-      // Navigate to generating screen
       router.push(`/session/${sessionId}/generating?leadId=${leadId}`);
     } catch {
       setError("Something went wrong. Please try again.");
@@ -72,7 +67,7 @@ export default function EmailGate() {
     }
   };
 
-  // Handle direct form submission as fallback
+  // Fallback email form
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [showFallback, setShowFallback] = useState(false);
@@ -80,10 +75,7 @@ export default function EmailGate() {
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
-
-    setLoading(true);
-    setError("");
-    await createLeadAndReport(email.trim(), name.trim() || undefined);
+    await createLeadAndReport(email.trim(), name.trim() || null);
   };
 
   return (

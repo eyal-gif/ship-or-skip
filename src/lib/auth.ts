@@ -26,7 +26,5 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return session;
     },
   },
-  pages: {
-    signIn: "/", // redirect to landing on sign-in needed
-  },
+  trustHost: true,
 });
