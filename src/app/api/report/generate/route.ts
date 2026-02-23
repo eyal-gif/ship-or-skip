@@ -45,6 +45,15 @@ export async function POST(request: Request) {
     }
 
     const answers = session.answers as Record<string, string | null>;
+
+    // Require at least Q1 (feature description) — can't score nothing
+    if (!answers.q1 || answers.q1.trim().length === 0) {
+      return NextResponse.json(
+        { error: "Please describe your feature before generating a report (Question 1 is required)." },
+        { status: 400 }
+      );
+    }
+
     const companyData = lead.companyData as {
       company_name: string;
       description: string;

@@ -88,21 +88,30 @@ export async function generateReport(
     messages: [
       {
         role: "system",
-        content: "You are a senior product advisor. Respond only with valid JSON.",
+        content: `You are a senior product advisor. Respond only with valid JSON.
+
+CRITICAL RULES:
+- ONLY reference information the user actually provided. NEVER invent, assume, or hallucinate features, details, or data the user did not explicitly state.
+- If a question was skipped, say "No information provided" in the detail — do NOT guess what the user might have meant.
+- The feature_name must come directly from what the user described in Q1. Do NOT make up a different feature name.
+- Score skipped questions LOW (1-3) and explicitly note the missing information.`,
       },
       {
         role: "user",
-        content: `Score this feature idea.
+        content: `Score this feature idea based ONLY on what was provided below. Do NOT invent or assume any details.
 
 CONTEXT:
 - Company: ${company.company_name} (${company.description}, ${company.size}, ${company.industry})
-- Feature described by user: ${answers.q1 || "(skipped)"}
-- Supporting data: ${answers.q2 || "(skipped)"}
-- Expected impact: ${answers.q3 || "(skipped)"}
-- Target persona: ${answers.q4 || "(skipped)"}
-- Success measurement: ${answers.q5 || "(skipped)"}
+- Q1 — Feature & problem (REQUIRED): ${answers.q1 || "(skipped)"}
+- Q2 — Supporting data: ${answers.q2 || "(not provided)"}
+- Q3 — Expected impact: ${answers.q3 || "(not provided)"}
+- Q4 — Target persona: ${answers.q4 || "(not provided)"}
+- Q5 — Success measurement: ${answers.q5 || "(not provided)"}
 
-Any question marked (skipped) was skipped — score that dimension lower and note the gap.
+RULES:
+- Any answer marked "(not provided)" was skipped. Score that dimension 1-3 and note "No information provided."
+- Do NOT guess or fill in gaps. Only reference what the user actually said.
+- feature_name: Extract directly from Q1. Use the user's own words, shortened to 2-5 words.
 
 SCORE across exactly 5 dimensions, each 1-10:
 
@@ -115,15 +124,15 @@ SCORE across exactly 5 dimensions, each 1-10:
 For each dimension provide:
 - dimension: string (the name)
 - score: integer 1-10
-- detail: one sentence explaining the score (be specific, reference what the user said)
+- detail: one sentence explaining the score (reference ONLY what the user said, or note the gap)
 
 Also provide:
-- feature_name: a clean 2-5 word name for the feature
+- feature_name: a clean 2-5 word name extracted from Q1
 - overall_score: weighted average (round to 1 decimal)
 - verdict: "BUILD IT" if >= 7.0, "SKIP IT" if < 5.0, "NEEDS WORK" if 5.0-6.9
-- summary: 1-2 sentences, direct, actionable
+- summary: 1-2 sentences, direct, actionable. Reference only provided info.
 
-Respond as JSON with shape: { feature_name, overall_score, verdict, summary, scores: [{ dimension, score, detail }] }`,
+Respond as JSON: { feature_name, overall_score, verdict, summary, scores: [{ dimension, score, detail }] }`,
       },
     ],
     temperature: 0.4,
