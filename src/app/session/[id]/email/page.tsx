@@ -2,6 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
+import { signInWithGoogle } from "./actions";
 
 export default function EmailGate() {
   const params = useParams();
@@ -37,11 +38,14 @@ export default function EmailGate() {
     }
   }, [checkSession]);
 
-  const handleGoogleSignIn = () => {
-    // NextAuth v5 requires POST with CSRF token for sign-in.
-    // The simplest approach: redirect to the built-in sign-in page with provider hint
-    const callbackUrl = `/session/${sessionId}/email?callback=true`;
-    window.location.href = `/api/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`;
+  const handleGoogleSignIn = async () => {
+    setLoading(true);
+    try {
+      const callbackUrl = `/session/${sessionId}/email?callback=true`;
+      await signInWithGoogle(callbackUrl);
+    } catch {
+      // signIn throws NEXT_REDIRECT which is expected — it's redirecting to Google
+    }
   };
 
   const createLeadAndReport = async (email: string, name?: string | null, image?: string | null) => {
