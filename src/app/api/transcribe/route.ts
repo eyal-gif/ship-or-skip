@@ -35,8 +35,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No audio file provided" }, { status: 400 });
     }
 
-    // Validate file type — exact match, not prefix
-    if (!ALLOWED_TYPES.has(file.type)) {
+    // Validate file type — check base MIME type (strip codec params like ";codecs=opus")
+    const baseType = file.type.split(";")[0].trim().toLowerCase();
+    if (!ALLOWED_TYPES.has(baseType)) {
       return NextResponse.json({ error: "Invalid audio format" }, { status: 400 });
     }
 
