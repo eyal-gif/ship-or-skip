@@ -17,22 +17,26 @@ export function verifyOrigin(request: Request): boolean {
   if (!origin && !referer) return true;
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  const allowedOrigins = [
+  const allowedOrigins = new Set<string>([
     new URL(appUrl).origin,
     "http://localhost:3000",
-  ];
+  ]);
 
-  // Also allow the Vercel preview URLs
-  if (process.env.VERCEL_URL) {
-    allowedOrigins.push(`https://${process.env.VERCEL_URL}`);
+  // Vercel auto-sets several URL env vars — each can differ:
+  //   VERCEL_URL: deployment-specific URL (e.g. my-app-abc123-team.vercel.app)
+  //   VERCEL_PROJECT_PRODUCTION_URL: main production domain (e.g. my-app.vercel.app)
+  //   VERCEL_BRANCH_URL: branch-specific domain
+  for (const envKey of ["VERCEL_URL", "VERCEL_PROJECT_PRODUCTION_URL", "VERCEL_BRANCH_URL"]) {
+    const val = process.env[envKey];
+    if (val) allowedOrigins.add(`https://${val}`);
   }
 
-  if (origin && allowedOrigins.includes(origin)) return true;
+  if (origin && allowedOrigins.has(origin)) return true;
 
   if (referer) {
     try {
       const refOrigin = new URL(referer).origin;
-      if (allowedOrigins.includes(refOrigin)) return true;
+      if (allowedOrigins.has(refOrigin)) return true;
     } catch {
       // Invalid referer URL
     }
