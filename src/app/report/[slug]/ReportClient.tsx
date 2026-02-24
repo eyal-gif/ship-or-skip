@@ -246,37 +246,6 @@ export default function ReportClient({
           </div>
         </div>
 
-        {/* ── 6. Bottom Mini CTA (NEW) ── */}
-        <div className="bg-[#1A1A1A] rounded-2xl p-4 mt-3">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold text-white">Need help prioritizing?</p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                Ship more without adding headcount.
-              </p>
-            </div>
-            <div className="flex gap-2 flex-shrink-0">
-              <a
-                href={waLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-[#FF6B35] text-white text-[11px] font-semibold
-                           px-3 py-1.5 rounded-lg hover:bg-[#e55a28] transition-colors"
-              >
-                WhatsApp
-              </a>
-              <a
-                href={calLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-transparent border border-white/30 text-white text-[11px] font-semibold
-                           px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors"
-              >
-                Call
-              </a>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
