@@ -116,71 +116,96 @@ export default function ReportClient({
               />
             ))}
           </div>
+        </div>
 
-          {/* Divider */}
-          <div className="h-px bg-gray-100 mx-5" />
-
-          {/* Share */}
-          <div className="px-5 py-4">
-            <h3 className="text-sm font-bold text-[#1A1A1A] mb-1">
-              Send this to your team.
-            </h3>
-            <p className="text-xs text-gray-500 mb-3 leading-relaxed">
-              Use it to make the case — or show why it&apos;s not worth it yet.
-            </p>
-
-            <div className="flex gap-2">
-              <button
-                onClick={copyLink}
-                className="flex-1 bg-[#1A1A1A] text-white text-xs font-semibold
-                           py-2.5 rounded-lg hover:bg-black transition-colors"
-              >
-                {copied ? "Copied!" : "Copy Link"}
-              </button>
-              <button
-                onClick={shareLinkedIn}
-                className="flex-1 bg-[#1A1A1A] text-white text-xs font-semibold
-                           py-2.5 rounded-lg hover:bg-black transition-colors"
-              >
-                LinkedIn
-              </button>
-              <button
-                onClick={shareX}
-                className="flex-1 bg-[#1A1A1A] text-white text-xs font-semibold
-                           py-2.5 rounded-lg hover:bg-black transition-colors"
-              >
-                X
-              </button>
-            </div>
-          </div>
-
-          {/* Divider */}
-          <div className="h-px bg-gray-100 mx-5" />
-
-          {/* CTA */}
-          <div className="px-5 py-5 text-center">
-            <p className="text-sm font-semibold text-[#1A1A1A] mb-1">
-              Want to validate with real user data?
-            </p>
-            <p className="text-[11px] text-gray-500 mb-3">
-              Product Builder connects your roadmap to what users actually do.
-            </p>
-            <a
-              href="https://productbuilder.ai"
-              className="inline-block bg-[#FF6B35] hover:bg-[#e55a28] text-white
-                         font-bold text-sm px-6 py-2.5 rounded-lg transition-colors"
+        {/* Share Block — Orange, prominent, right after scores */}
+        <div className="bg-[#FF6B35] rounded-2xl p-5 mt-3 text-white">
+          <h3 className="text-base font-bold mb-1">
+            Send this to your team.
+          </h3>
+          <p className="text-sm text-white/80 mb-4 leading-relaxed">
+            Use it to make the case — or show why it&apos;s not worth it yet.
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={copyLink}
+              className="flex-1 bg-white text-[#1A1A1A] text-xs font-semibold
+                         py-2.5 rounded-lg hover:bg-gray-100 transition-colors"
             >
-              Book a Call
-            </a>
-            <div className="mt-3">
-              <a
-                href="/"
-                className="text-xs text-[#FF6B35] font-semibold hover:underline"
-              >
-                Validate another feature →
-              </a>
+              {copied ? "Copied!" : "Copy Link"}
+            </button>
+            <button
+              onClick={shareLinkedIn}
+              className="flex-1 bg-white text-[#1A1A1A] text-xs font-semibold
+                         py-2.5 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              LinkedIn
+            </button>
+            <button
+              onClick={shareX}
+              className="flex-1 bg-white text-[#1A1A1A] text-xs font-semibold
+                         py-2.5 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              X
+            </button>
+          </div>
+        </div>
+
+        {/* Expert Panel — Product Builder Podcast */}
+        <div className="bg-white rounded-2xl shadow-sm p-5 mt-3">
+          {/* Podcast badge */}
+          <div className="mb-3">
+            <span className="inline-flex items-center gap-1.5 bg-[#FFF3ED] text-[#FF6B35] text-[10px] font-bold tracking-wider px-3 py-1.5 rounded-full uppercase">
+              🎙️ The Product Builder Podcast
+            </span>
+          </div>
+
+          <h4 className="text-base font-bold text-[#1A1A1A] mb-1">
+            What would product leaders say?
+          </h4>
+          <p className="text-xs text-gray-500 mb-4 leading-relaxed">
+            Matched from 100+ episodes of the Product Builder Podcast
+          </p>
+
+          {/* Expert cards placeholder — populated if data exists */}
+          <div className="space-y-3 mb-4">
+            <div className="border border-gray-100 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-sm flex-shrink-0">
+                  🎧
+                </div>
+                <div>
+                  <p className="text-sm text-gray-700 leading-relaxed italic">
+                    &ldquo;Coming soon — expert reactions from real podcast episodes will appear here.&rdquo;
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
+
+          <p className="text-[10px] text-gray-400 italic leading-relaxed">
+            AI-generated based on real Product Builder Podcast interviews. Not direct quotes.
+          </p>
+        </div>
+
+        {/* CTA — Black block */}
+        <div className="bg-[#1A1A1A] rounded-2xl p-6 mt-3 text-center">
+          <div className="text-[9px] font-bold text-[#FF6B35] tracking-[0.15em] mb-3">
+            PRODUCT BUILDER
+          </div>
+          <h3 className="text-[17px] font-bold text-white mb-3 leading-snug">
+            Ship more with the team you have.
+          </h3>
+          <p className="text-[13px] text-gray-400 leading-relaxed mb-5 max-w-xs mx-auto">
+            We help founders and product leaders prioritize what matters, cut what doesn&apos;t, and deliver faster — without adding headcount.
+          </p>
+          <a
+            href="https://getproductbuilder.com"
+            className="inline-block bg-[#FF6B35] hover:bg-[#e55a28] text-white
+                       font-bold text-sm px-8 py-3 rounded-lg transition-colors"
+          >
+            Talk to Us
+          </a>
         </div>
       </div>
     </div>
