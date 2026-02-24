@@ -1,9 +1,17 @@
 import OpenAI from "openai";
 import { findRelevantExperts, type PodcastExpertContext } from "./podcast-rag";
+import { validateReportOutput, validateCompanyOutput, sanitizeDomain } from "./security";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+// Cap total prompt content to prevent cost amplification
+const MAX_ANSWER_LEN = 2000;
+function cap(s: string | null, fallback: string): string {
+  if (!s) return fallback;
+  return s.length > MAX_ANSWER_LEN ? s.slice(0, MAX_ANSWER_LEN) + "..." : s;
+}
 
 export async function transcribeAudio(audioBuffer: ArrayBuffer, mimeType: string): Promise<string> {
   const ext = mimeType.includes("webm") ? "webm" : "mp3";
@@ -23,6 +31,9 @@ export async function enrichCompany(domain: string): Promise<{
   size: string;
   industry: string;
 }> {
+  // Sanitize domain to prevent prompt injection
+  const safeDomain = sanitizeDomain(domain);
+
   const response = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     messages: [
@@ -32,7 +43,7 @@ export async function enrichCompany(domain: string): Promise<{
       },
       {
         role: "user",
-        content: `Given the company domain "${domain}", provide:
+        content: `Given the company domain "${safeDomain}", provide:
 - company_name: string
 - description: one sentence about what they do
 - size: "startup" | "smb" | "mid-market" | "enterprise"
@@ -53,7 +64,9 @@ Respond as JSON only.`,
     companyText = companyText.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?\s*```$/, "");
   }
   try {
-    return JSON.parse(companyText);
+    const raw = JSON.parse(companyText);
+    // Validate & clamp LLM output
+    return validateCompanyOutput(raw);
   } catch {
     return {
       company_name: "Unknown",
@@ -98,7 +111,7 @@ export async function generateReport(
     industry: "Unknown",
   };
 
-  const featureDescription = answers.q1 || "";
+  const featureDescription = cap(answers.q1, "");
 
   // Run scoring and podcast RAG in parallel for speed
   const [scoreResponse, podcastExperts] = await Promise.all([
@@ -118,15 +131,20 @@ CRITICAL RULES:
         },
         {
           role: "user",
+          // User answers are capped and wrapped in XML-style delimiters
+          // to reduce prompt injection risk
           content: `Score this feature idea based ONLY on what was provided below. Do NOT invent or assume any details.
 
 CONTEXT:
 - Company: ${company.company_name} (${company.description}, ${company.size}, ${company.industry})
-- Q1 — Feature & problem (REQUIRED): ${answers.q1 || "(skipped)"}
-- Q2 — Supporting data: ${answers.q2 || "(not provided)"}
-- Q3 — Expected impact: ${answers.q3 || "(not provided)"}
-- Q4 — Target persona: ${answers.q4 || "(not provided)"}
-- Q5 — Success measurement: ${answers.q5 || "(not provided)"}
+
+<user_answers>
+- Q1 — Feature & problem (REQUIRED): ${cap(answers.q1, "(skipped)")}
+- Q2 — Supporting data: ${cap(answers.q2, "(not provided)")}
+- Q3 — Expected impact: ${cap(answers.q3, "(not provided)")}
+- Q4 — Target persona: ${cap(answers.q4, "(not provided)")}
+- Q5 — Success measurement: ${cap(answers.q5, "(not provided)")}
+</user_answers>
 
 RULES:
 - Any answer marked "(not provided)" was skipped. Score that dimension 1-3 and note "No information provided."
@@ -180,7 +198,9 @@ Respond as JSON: { feature_name, overall_score, verdict, summary, scores: [{ dim
   };
 
   try {
-    scoreData = JSON.parse(scoreText);
+    const raw = JSON.parse(scoreText);
+    // Validate & clamp LLM output (scores in range, verdict is allowed, etc.)
+    scoreData = validateReportOutput(raw);
   } catch {
     scoreData = {
       feature_name: "Feature Analysis",
@@ -221,8 +241,6 @@ Respond as JSON: { feature_name, overall_score, verdict, summary, scores: [{ dim
 
 /**
  * Generate expert reactions grounded in REAL podcast guest data.
- * Uses actual guest profiles (name, role, company, quotes, opinions, speaking style)
- * and relevant transcript chunks found via vector search to produce authentic reactions.
  */
 async function generateReactionsFromPodcast(
   experts: PodcastExpertContext[],
@@ -230,7 +248,6 @@ async function generateReactionsFromPodcast(
   company: { company_name: string; description: string; size: string; industry: string },
   verdict: string
 ): Promise<ReactionItem[]> {
-  // Build context block for each real expert
   const expertContextBlocks = experts.map((e, i) => {
     const g = e.guest;
     const quotes = (g.notable_quotes || []).slice(0, 3).map((q) => `  - "${q}"`).join("\n");
@@ -270,9 +287,11 @@ CRITICAL RULES:
         role: "user",
         content: `Generate expert reactions for this feature idea from REAL Product Builder Podcast guests.
 
+<feature_context>
 FEATURE: ${featureDescription}
 COMPANY: ${company.company_name} (${company.description}, ${company.size}, ${company.industry})
 VERDICT: ${verdict}
+</feature_context>
 
 ${expertContextBlocks}
 

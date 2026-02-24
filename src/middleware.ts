@@ -7,8 +7,14 @@ export function middleware(request: NextRequest) {
   // Security headers
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("X-Frame-Options", "DENY");
-  response.headers.set("X-XSS-Protection", "1; mode=block");
+  // Disable legacy XSS auditor (deprecated, can cause issues)
+  response.headers.set("X-XSS-Protection", "0");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  // HSTS: enforce HTTPS for 1 year
+  response.headers.set(
+    "Strict-Transport-Security",
+    "max-age=31536000; includeSubDomains"
+  );
   response.headers.set(
     "Permissions-Policy",
     "camera=(), geolocation=(), microphone=(self)"
@@ -17,11 +23,14 @@ export function middleware(request: NextRequest) {
     "Content-Security-Policy",
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://apis.google.com",
+      // Next.js requires unsafe-inline for styles; removed unsafe-eval
+      "script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com",
       "style-src 'self' 'unsafe-inline' https://accounts.google.com",
-      "img-src 'self' data: https: blob:",
+      // Tightened img-src: only self, data URIs, Google profile pics
+      "img-src 'self' data: blob: https://lh3.googleusercontent.com",
       "font-src 'self'",
-      "connect-src 'self' https://accounts.google.com https://api.openai.com",
+      // Removed api.openai.com (server-side only, not needed in CSP)
+      "connect-src 'self' https://accounts.google.com",
       "frame-src https://accounts.google.com",
     ].join("; ")
   );

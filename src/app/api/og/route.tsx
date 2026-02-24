@@ -36,7 +36,7 @@ export async function GET(request: Request) {
   const verdictColor =
     verdict === "BUILD IT" ? "#22C55E" : verdict === "SKIP IT" ? "#EF4444" : "#F59E0B";
 
-  return new ImageResponse(
+  const imageResponse = new ImageResponse(
     (
       <div
         style={{
@@ -120,4 +120,12 @@ export async function GET(request: Request) {
       height: 630,
     }
   );
+
+  // Cache OG images for 1 hour at CDN, 24 hours stale-while-revalidate
+  imageResponse.headers.set(
+    "Cache-Control",
+    "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400"
+  );
+
+  return imageResponse;
 }

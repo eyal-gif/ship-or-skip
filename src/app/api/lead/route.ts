@@ -5,10 +5,21 @@ import { eq } from "drizzle-orm";
 import { createLeadSchema } from "@/lib/validations";
 import { enrichCompany } from "@/lib/openai";
 import { extractDomain } from "@/lib/utils";
-import { rateLimit } from "@/lib/rate-limit";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { verifyOrigin, sanitizeDomain } from "@/lib/security";
+
+const FREE_EMAIL_DOMAINS = new Set([
+  "gmail.com", "yahoo.com", "hotmail.com", "outlook.com",
+  "live.com", "icloud.com", "aol.com", "protonmail.com",
+]);
 
 export async function POST(request: Request) {
-  const ip = request.headers.get("x-forwarded-for") || "unknown";
+  // CSRF: verify request origin
+  if (!verifyOrigin(request)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const ip = getClientIp(request);
   const { success } = rateLimit(`lead:${ip}`, 10, 60 * 60 * 1000);
   if (!success) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
@@ -19,10 +30,8 @@ export async function POST(request: Request) {
     const parsed = createLeadSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Invalid input", details: parsed.error.flatten() },
-        { status: 400 }
-      );
+      // Don't leak validation details to client
+      return NextResponse.json({ error: "Invalid input" }, { status: 400 });
     }
 
     const { sessionId, email, name, image } = parsed.data;
@@ -38,11 +47,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
-    const domain = extractDomain(email);
+    // Sanitize domain before passing to LLM
+    const rawDomain = extractDomain(email);
+    const domain = sanitizeDomain(rawDomain);
 
-    // Enrich company data
+    // Enrich company data (skip free email providers)
     let companyData = null;
-    if (domain && !["gmail.com", "yahoo.com", "hotmail.com", "outlook.com"].includes(domain)) {
+    if (domain && !FREE_EMAIL_DOMAINS.has(domain)) {
       try {
         companyData = await enrichCompany(domain);
       } catch {

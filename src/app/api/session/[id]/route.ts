@@ -4,11 +4,17 @@ import { sessions } from "@/lib/schema";
 import { eq, sql } from "drizzle-orm";
 import { updateSessionSchema } from "@/lib/validations";
 import { rateLimit } from "@/lib/rate-limit";
+import { verifyOrigin } from "@/lib/security";
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // CSRF: verify request origin
+  if (!verifyOrigin(request)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const { id } = await params;
 
   // Validate UUID format
@@ -27,10 +33,8 @@ export async function PATCH(
     const parsed = updateSessionSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Invalid input", details: parsed.error.flatten() },
-        { status: 400 }
-      );
+      // Don't leak validation details to client
+      return NextResponse.json({ error: "Invalid input" }, { status: 400 });
     }
 
     const { questionKey, answer } = parsed.data;

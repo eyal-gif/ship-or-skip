@@ -104,7 +104,8 @@ export default function ReportClient({
   const waText = encodeURIComponent(
     `Hi, I just scored my feature "${featureName}" (${overallScore.toFixed(1)}/10) on Ship or Skip. I'd like to discuss it.`
   );
-  const waLink = `https://wa.me/972544964988?text=${waText}`;
+  const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "972544964988";
+  const waLink = `https://wa.me/${waNumber}?text=${waText}`;
   const calLink = "https://cal.com/eyald";
 
   const copyLink = async () => {

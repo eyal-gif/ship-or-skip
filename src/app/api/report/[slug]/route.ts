@@ -2,11 +2,19 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { reports } from "@/lib/schema";
 import { eq } from "drizzle-orm";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  // Rate limit: 60 reads per IP per minute
+  const ip = getClientIp(request);
+  const { success } = rateLimit(`report-read:${ip}`, 60, 60 * 1000);
+  if (!success) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   const { slug } = await params;
 
   // Validate slug format (alphanumeric, 10 chars)
@@ -15,8 +23,22 @@ export async function GET(
   }
 
   try {
+    // Select only public fields — exclude internal IDs (sessionId, leadId, id)
     const [report] = await db
-      .select()
+      .select({
+        slug: reports.slug,
+        featureName: reports.featureName,
+        companyName: reports.companyName,
+        overallScore: reports.overallScore,
+        verdict: reports.verdict,
+        scores: reports.scores,
+        reactions: reports.reactions,
+        summary: reports.summary,
+        companyDescription: reports.companyDescription,
+        companySize: reports.companySize,
+        companyIndustry: reports.companyIndustry,
+        createdAt: reports.createdAt,
+      })
       .from(reports)
       .where(eq(reports.slug, slug))
       .limit(1);

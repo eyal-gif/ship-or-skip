@@ -1,13 +1,27 @@
 import { NextResponse } from "next/server";
 import { transcribeAudio } from "@/lib/openai";
-import { rateLimit } from "@/lib/rate-limit";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { verifyOrigin } from "@/lib/security";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-const ALLOWED_TYPES = ["audio/webm", "audio/mp3", "audio/mpeg", "audio/mp4", "audio/wav"];
+const ALLOWED_TYPES = new Set([
+  "audio/webm",
+  "audio/mp3",
+  "audio/mpeg",
+  "audio/mp4",
+  "audio/wav",
+  "audio/ogg",
+  "audio/x-m4a",
+]);
 
 export async function POST(request: Request) {
-  // Rate limit: 30 transcriptions per IP per hour
-  const ip = request.headers.get("x-forwarded-for") || "unknown";
+  // CSRF: verify request origin
+  if (!verifyOrigin(request)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // Rate limit: 30 transcriptions per IP per hour (using reliable IP)
+  const ip = getClientIp(request);
   const { success } = rateLimit(`transcribe:${ip}`, 30, 60 * 60 * 1000);
   if (!success) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
@@ -21,8 +35,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No audio file provided" }, { status: 400 });
     }
 
-    // Validate file type
-    if (!ALLOWED_TYPES.some((t) => file.type.startsWith(t.split("/")[0]))) {
+    // Validate file type — exact match, not prefix
+    if (!ALLOWED_TYPES.has(file.type)) {
       return NextResponse.json({ error: "Invalid audio format" }, { status: 400 });
     }
 

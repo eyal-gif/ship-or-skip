@@ -5,10 +5,16 @@ import { eq } from "drizzle-orm";
 import { generateReportSchema } from "@/lib/validations";
 import { generateReport } from "@/lib/openai";
 import { generateSlug } from "@/lib/utils";
-import { rateLimit } from "@/lib/rate-limit";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { verifyOrigin } from "@/lib/security";
 
 export async function POST(request: Request) {
-  const ip = request.headers.get("x-forwarded-for") || "unknown";
+  // CSRF: verify request origin
+  if (!verifyOrigin(request)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const ip = getClientIp(request);
   const { success } = rateLimit(`report:${ip}`, 10, 60 * 60 * 1000);
   if (!success) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
@@ -19,10 +25,8 @@ export async function POST(request: Request) {
     const parsed = generateReportSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Invalid input", details: parsed.error.flatten() },
-        { status: 400 }
-      );
+      // Don't leak validation details to client
+      return NextResponse.json({ error: "Invalid input" }, { status: 400 });
     }
 
     const { sessionId, leadId } = parsed.data;
@@ -42,6 +46,11 @@ export async function POST(request: Request) {
 
     if (!session || !lead) {
       return NextResponse.json({ error: "Session or lead not found" }, { status: 404 });
+    }
+
+    // IDOR fix: verify lead belongs to this session
+    if (lead.sessionId !== sessionId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const answers = session.answers as Record<string, string | null>;

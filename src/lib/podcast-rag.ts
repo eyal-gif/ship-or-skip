@@ -3,6 +3,9 @@ import { neon } from "@neondatabase/serverless";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+// Reuse a single module-level SQL connection (not per-request)
+const sql = neon(process.env.DATABASE_URL!);
+
 interface GuestProfile {
   guest_name: string;
   guest_role: string | null;
@@ -49,7 +52,6 @@ export async function findRelevantExperts(
   featureDescription: string,
   limit: number = 3
 ): Promise<PodcastExpertContext[]> {
-  const sql = neon(process.env.DATABASE_URL!);
 
   // Step 1: Generate embedding for the feature description
   const embedding = await generateEmbedding(featureDescription);
