@@ -59,7 +59,7 @@ export async function findRelevantExperts(
 
   // Step 2: Find top relevant chunks via cosine similarity
   // Get more than we need so we can pick diverse guests
-  const chunks: RelevantChunk[] = await sql`
+  const chunks = await sql`
     SELECT
       guest_name,
       guest_role,
@@ -78,7 +78,7 @@ export async function findRelevantExperts(
   const seenGuests = new Set<string>();
   const guestChunksMap = new Map<string, string[]>();
 
-  for (const chunk of chunks) {
+  for (const chunk of chunks as RelevantChunk[]) {
     const key = chunk.guest_name;
     if (!seenGuests.has(key) && seenGuests.size < limit) {
       seenGuests.add(key);
@@ -100,7 +100,7 @@ export async function findRelevantExperts(
   const guestNames = Array.from(seenGuests);
 
   // Step 4: Fetch full guest profiles
-  const profiles: GuestProfile[] = await sql`
+  const profiles = await sql`
     SELECT
       guest_name,
       guest_role,
@@ -118,7 +118,7 @@ export async function findRelevantExperts(
   const results: PodcastExpertContext[] = [];
 
   for (const name of guestNames) {
-    const profile = profiles.find((p) => p.guest_name === name);
+    const profile = (profiles as GuestProfile[]).find((p) => p.guest_name === name);
     if (!profile) continue;
 
     // Skip guests with insufficient data
