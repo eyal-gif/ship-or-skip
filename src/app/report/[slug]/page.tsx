@@ -65,14 +65,26 @@ export default async function ReportPage({ params }: PageProps) {
     detail: string;
   }>;
 
+  const reactions = (report.reactions as Array<{
+    name: string;
+    role: string;
+    company: string;
+    reaction: string;
+    stance: "supportive" | "cautious" | "critical";
+  }>) || [];
+
   return (
     <ReportClient
       featureName={report.featureName}
       companyName={report.companyName}
+      companyDescription={report.companyDescription}
+      companySize={report.companySize}
+      companyIndustry={report.companyIndustry}
       overallScore={Number(report.overallScore)}
       verdict={report.verdict || "NEEDS WORK"}
       summary={report.summary || ""}
       scores={scores}
+      reactions={reactions}
       slug={slug}
       createdAt={report.createdAt.toISOString()}
     />

@@ -64,12 +64,21 @@ interface ScoreItem {
   detail: string;
 }
 
+interface ReactionItem {
+  name: string;
+  role: string;
+  company: string;
+  reaction: string;
+  stance: "supportive" | "cautious" | "critical";
+}
+
 export interface ReportResult {
   feature_name: string;
   overall_score: number;
   verdict: string;
   summary: string;
   scores: ScoreItem[];
+  reactions: ReactionItem[];
 }
 
 export async function generateReport(
@@ -132,11 +141,19 @@ Also provide:
 - verdict: "BUILD IT" if >= 7.0, "SKIP IT" if < 5.0, "NEEDS WORK" if 5.0-6.9
 - summary: 1-2 sentences, direct, actionable. Reference only provided info.
 
-Respond as JSON: { feature_name, overall_score, verdict, summary, scores: [{ dimension, score, detail }] }`,
+EXPERT REACTIONS:
+Generate exactly 3 fictional product leader reactions as if from podcast interviews. Each should:
+- Have a realistic name, role (VP Product, CPO, Head of Product, etc.), and company name
+- Give a 1-2 sentence reaction to this specific feature idea, referencing the user's actual answers
+- Have a stance: "supportive", "cautious", or "critical" — vary them across the 3 experts
+- Sound like real product leaders giving honest, specific feedback — not generic platitudes
+- Reference the company context and specific details from the user's answers
+
+Respond as JSON: { feature_name, overall_score, verdict, summary, scores: [{ dimension, score, detail }], reactions: [{ name, role, company, reaction, stance }] }`,
       },
     ],
     temperature: 0.4,
-    max_tokens: 600,
+    max_tokens: 1200,
   });
 
   const text = response.choices[0]?.message?.content || "{}";
@@ -155,6 +172,7 @@ Respond as JSON: { feature_name, overall_score, verdict, summary, scores: [{ dim
         { dimension: "Impact Potential", score: 5, detail: "Insufficient data to score." },
         { dimension: "Measurement Readiness", score: 5, detail: "Insufficient data to score." },
       ],
+      reactions: [],
     };
   }
 }

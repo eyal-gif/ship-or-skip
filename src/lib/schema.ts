@@ -35,6 +35,10 @@ export const reports = pgTable("reports", {
   overallScore: decimal("overall_score", { precision: 3, scale: 1 }),
   verdict: text("verdict"),
   scores: jsonb("scores").notNull(),
+  reactions: jsonb("reactions"),
   summary: text("summary"),
+  companyDescription: text("company_description"),
+  companySize: text("company_size"),
+  companyIndustry: text("company_industry"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

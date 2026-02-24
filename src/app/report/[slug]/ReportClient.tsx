@@ -3,13 +3,25 @@
 import { useState } from "react";
 import ScoreBar from "@/components/ScoreBar";
 
+interface Reaction {
+  name: string;
+  role: string;
+  company: string;
+  reaction: string;
+  stance: "supportive" | "cautious" | "critical";
+}
+
 interface ReportClientProps {
   featureName: string;
   companyName: string | null;
+  companyDescription: string | null;
+  companySize: string | null;
+  companyIndustry: string | null;
   overallScore: number;
   verdict: string;
   summary: string;
   scores: Array<{ dimension: string; score: number; detail: string }>;
+  reactions: Reaction[];
   slug: string;
   createdAt: string;
 }
@@ -17,10 +29,14 @@ interface ReportClientProps {
 export default function ReportClient({
   featureName,
   companyName,
+  companyDescription,
+  companySize,
+  companyIndustry,
   overallScore,
   verdict,
   summary,
   scores,
+  reactions,
   slug,
   createdAt,
 }: ReportClientProps) {
@@ -105,6 +121,25 @@ export default function ReportClient({
             <p className="text-sm text-gray-600 leading-relaxed">{summary}</p>
           </div>
 
+          {/* Company Context */}
+          {companyDescription && companyDescription !== "Unknown" && (
+            <div className="mx-5 mb-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[10px] font-bold text-gray-400 tracking-wider uppercase">Company Context</span>
+              </div>
+              <p className="text-xs text-gray-600 leading-relaxed">
+                <span className="font-semibold">{companyName}</span>
+                {companyDescription && companyDescription !== "Unknown" && ` — ${companyDescription}`}
+                {companySize && companySize !== "Unknown" && (
+                  <span className="text-gray-400"> · {companySize}</span>
+                )}
+                {companyIndustry && companyIndustry !== "Unknown" && (
+                  <span className="text-gray-400"> · {companyIndustry}</span>
+                )}
+              </p>
+            </div>
+          )}
+
           {/* Scores */}
           <div className="px-5 pt-2 pb-4">
             {scores.map((s) => (
@@ -167,20 +202,39 @@ export default function ReportClient({
             Matched from 100+ episodes of the Product Builder Podcast
           </p>
 
-          {/* Expert cards placeholder — populated if data exists */}
+          {/* Expert reaction cards */}
           <div className="space-y-3 mb-4">
-            <div className="border border-gray-100 rounded-xl p-4">
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-sm flex-shrink-0">
-                  🎧
+            {reactions.length > 0 ? reactions.map((r, i) => {
+              const stanceIcon =
+                r.stance === "supportive" ? "👍" :
+                r.stance === "cautious" ? "🤔" : "⚠️";
+              const stanceColor =
+                r.stance === "supportive" ? "bg-green-50 border-green-100" :
+                r.stance === "cautious" ? "bg-yellow-50 border-yellow-100" :
+                "bg-red-50 border-red-100";
+              return (
+                <div key={i} className={`border rounded-xl p-4 ${stanceColor}`}>
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-full bg-white border border-gray-200 flex items-center justify-center text-sm flex-shrink-0">
+                      {stanceIcon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-bold text-[#1A1A1A]">{r.name}</span>
+                        <span className="text-[10px] text-gray-400">{r.role}, {r.company}</span>
+                      </div>
+                      <p className="text-sm text-gray-700 leading-relaxed italic">
+                        &ldquo;{r.reaction}&rdquo;
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-700 leading-relaxed italic">
-                    &ldquo;Coming soon — expert reactions from real podcast episodes will appear here.&rdquo;
-                  </p>
-                </div>
+              );
+            }) : (
+              <div className="border border-gray-100 rounded-xl p-4 text-center">
+                <p className="text-xs text-gray-400">No expert reactions available for this report.</p>
               </div>
-            </div>
+            )}
           </div>
 
           <p className="text-[10px] text-gray-400 italic leading-relaxed">

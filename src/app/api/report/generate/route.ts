@@ -77,7 +77,11 @@ export async function POST(request: Request) {
         overallScore: String(result.overall_score),
         verdict: result.verdict,
         scores: result.scores,
+        reactions: result.reactions || [],
         summary: result.summary,
+        companyDescription: companyData?.description || null,
+        companySize: companyData?.size || null,
+        companyIndustry: companyData?.industry || null,
       })
       .returning();
 
