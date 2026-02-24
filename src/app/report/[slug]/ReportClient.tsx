@@ -40,14 +40,6 @@ const METRIC_NUDGE: Record<string, string> = {
 
 /* ─────────────────────────────────────────────── */
 
-interface Reaction {
-  name: string;
-  role: string;
-  company: string;
-  reaction: string;
-  stance: "supportive" | "cautious" | "critical";
-}
-
 interface ReportClientProps {
   featureName: string;
   companyName: string | null;
@@ -58,7 +50,6 @@ interface ReportClientProps {
   verdict: string;
   summary: string;
   scores: Array<{ dimension: string; score: number; detail: string }>;
-  reactions: Reaction[];
   slug: string;
   createdAt: string;
 }
@@ -73,7 +64,6 @@ export default function ReportClient({
   verdict,
   summary,
   scores,
-  reactions,
   slug,
   createdAt,
 }: ReportClientProps) {
@@ -235,62 +225,6 @@ export default function ReportClient({
               Book a Call
             </a>
           </div>
-        </div>
-
-        {/* ── 4. Expert Panel — Product Builder Podcast (UPDATED BRANDING) ── */}
-        <div className="bg-white rounded-2xl shadow-sm p-5 mt-3">
-          {/* Podcast badge */}
-          <div className="mb-3">
-            <span className="inline-flex items-center gap-1.5 bg-[#FFF3ED] text-[#FF6B35] text-[10px] font-bold tracking-wider px-3 py-1.5 rounded-full uppercase">
-              &#127897;&#65039; The Product Builder Podcast
-            </span>
-          </div>
-
-          <h4 className="text-base font-bold text-[#1A1A1A] mb-1">
-            What would product leaders say?
-          </h4>
-          <p className="text-xs text-gray-500 mb-4 leading-relaxed">
-            Matched from 100+ episodes of the Product Builder Podcast
-          </p>
-
-          {/* Expert reaction cards (internals UNCHANGED) */}
-          <div className="space-y-3 mb-4">
-            {reactions.length > 0 ? reactions.map((r, i) => {
-              const stanceIcon =
-                r.stance === "supportive" ? "\uD83D\uDC4D" :
-                r.stance === "cautious" ? "\uD83E\uDD14" : "\u26A0\uFE0F";
-              const stanceColor =
-                r.stance === "supportive" ? "bg-green-50 border-green-100" :
-                r.stance === "cautious" ? "bg-yellow-50 border-yellow-100" :
-                "bg-red-50 border-red-100";
-              return (
-                <div key={i} className={`border rounded-xl p-4 ${stanceColor}`}>
-                  <div className="flex items-start gap-3">
-                    <div className="w-9 h-9 rounded-full bg-white border border-gray-200 flex items-center justify-center text-sm flex-shrink-0">
-                      {stanceIcon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-bold text-[#1A1A1A]">{r.name}</span>
-                        <span className="text-[10px] text-gray-400">{r.role}, {r.company}</span>
-                      </div>
-                      <p className="text-sm text-gray-700 leading-relaxed italic">
-                        &ldquo;{r.reaction}&rdquo;
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              );
-            }) : (
-              <div className="border border-gray-100 rounded-xl p-4 text-center">
-                <p className="text-xs text-gray-400">No expert reactions available for this report.</p>
-              </div>
-            )}
-          </div>
-
-          <p className="text-[10px] text-gray-400 italic leading-relaxed">
-            AI-generated based on real Product Builder Podcast interviews. Not direct quotes.
-          </p>
         </div>
 
         {/* ── 5. Share Block — Simplified (MOVED DOWN) ── */}

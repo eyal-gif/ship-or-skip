@@ -65,14 +65,6 @@ export default async function ReportPage({ params }: PageProps) {
     detail: string;
   }>;
 
-  const reactions = (report.reactions as Array<{
-    name: string;
-    role: string;
-    company: string;
-    reaction: string;
-    stance: "supportive" | "cautious" | "critical";
-  }>) || [];
-
   return (
     <ReportClient
       featureName={report.featureName}
@@ -84,7 +76,6 @@ export default async function ReportPage({ params }: PageProps) {
       verdict={report.verdict || "NEEDS WORK"}
       summary={report.summary || ""}
       scores={scores}
-      reactions={reactions}
       slug={slug}
       createdAt={report.createdAt.toISOString()}
     />
