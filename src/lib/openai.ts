@@ -41,13 +41,18 @@ If you can't determine any field, use "Unknown".
 Respond as JSON only.`,
       },
     ],
+    response_format: { type: "json_object" },
     temperature: 0.3,
     max_tokens: 200,
   });
 
-  const text = response.choices[0]?.message?.content || "{}";
+  let companyText = response.choices[0]?.message?.content || "{}";
+  companyText = companyText.trim();
+  if (companyText.startsWith("```")) {
+    companyText = companyText.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?\s*```$/, "");
+  }
   try {
-    return JSON.parse(text);
+    return JSON.parse(companyText);
   } catch {
     return {
       company_name: "Unknown",
@@ -152,13 +157,26 @@ Generate exactly 3 fictional product leader reactions as if from podcast intervi
 Respond as JSON: { feature_name, overall_score, verdict, summary, scores: [{ dimension, score, detail }], reactions: [{ name, role, company, reaction, stance }] }`,
       },
     ],
+    response_format: { type: "json_object" },
     temperature: 0.4,
-    max_tokens: 1200,
+    max_tokens: 2000,
   });
 
-  const text = response.choices[0]?.message?.content || "{}";
+  let text = response.choices[0]?.message?.content || "{}";
+
+  // Strip markdown code fences if present (GPT often wraps JSON in ```json ... ```)
+  text = text.trim();
+  if (text.startsWith("```")) {
+    text = text.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?\s*```$/, "");
+  }
+
   try {
-    return JSON.parse(text);
+    const parsed = JSON.parse(text);
+    // Ensure reactions array exists
+    if (!parsed.reactions || !Array.isArray(parsed.reactions)) {
+      parsed.reactions = [];
+    }
+    return parsed;
   } catch {
     return {
       feature_name: "Feature Analysis",
