@@ -276,8 +276,11 @@ ${chunks || "  (none available)"}`;
         content: `You generate expert reactions for a feature validation report. Respond only with valid JSON.
 
 CRITICAL RULES:
-- You are given REAL podcast guests from the Product Builder Podcast. Use their EXACT names, roles, and companies.
-- DO NOT change or invent names, roles, or companies. Use them EXACTLY as provided.
+- LANGUAGE: ALL output MUST be in English. The source data may be in Hebrew — you MUST translate everything to natural English.
+- You are given REAL podcast guests from the Product Builder Podcast. Use their names, roles, and companies.
+- Translate guest names to their English/Latin-script equivalent (e.g. "גיא רז" → "Guy Raz"). Keep names that are already in English as-is.
+- Translate company names to English. If the company has an established English name, use it. Otherwise transliterate.
+- Translate roles to English equivalents (e.g. "מנכ״ל" → "CEO", "סמנכ״ל מוצר" → "VP Product").
 - Write each reaction in the guest's speaking style, drawing from their real opinions and quotes.
 - Each reaction should feel like something this specific person would actually say, based on their known positions.
 - Reactions must be about the specific feature being evaluated — not generic advice.
@@ -295,11 +298,11 @@ VERDICT: ${verdict}
 
 ${expertContextBlocks}
 
-For each expert above, write a 1-2 sentence reaction to this feature idea in their voice/style.
-Use their EXACT name, role, and company. Draw on their known opinions and speaking style.
+For each expert above, write a 1-2 sentence reaction IN ENGLISH to this feature idea in their voice/style.
+Translate all names, roles, and companies to English if they are in Hebrew. Draw on their known opinions and speaking style.
 Vary stances across experts: "supportive", "cautious", "critical".
 
-Respond as JSON: { reactions: [{ name, role, company, reaction, stance }] }`,
+Respond as JSON (ALL values in English): { reactions: [{ name, role, company, reaction, stance }] }`,
       },
     ],
     response_format: { type: "json_object" },
