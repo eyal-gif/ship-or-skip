@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { findRelevantExperts, type PodcastExpertContext } from "./podcast-rag";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -97,22 +98,27 @@ export async function generateReport(
     industry: "Unknown",
   };
 
-  const response = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [
-      {
-        role: "system",
-        content: `You are a senior product advisor. Respond only with valid JSON.
+  const featureDescription = answers.q1 || "";
+
+  // Run scoring and podcast RAG in parallel for speed
+  const [scoreResponse, podcastExperts] = await Promise.all([
+    // 1. Score the feature via LLM
+    openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: `You are a senior product advisor. Respond only with valid JSON.
 
 CRITICAL RULES:
 - ONLY reference information the user actually provided. NEVER invent, assume, or hallucinate features, details, or data the user did not explicitly state.
 - If a question was skipped, say "No information provided" in the detail — do NOT guess what the user might have meant.
 - The feature_name must come directly from what the user described in Q1. Do NOT make up a different feature name.
 - Score skipped questions LOW (1-3) and explicitly note the missing information.`,
-      },
-      {
-        role: "user",
-        content: `Score this feature idea based ONLY on what was provided below. Do NOT invent or assume any details.
+        },
+        {
+          role: "user",
+          content: `Score this feature idea based ONLY on what was provided below. Do NOT invent or assume any details.
 
 CONTEXT:
 - Company: ${company.company_name} (${company.description}, ${company.size}, ${company.industry})
@@ -146,39 +152,37 @@ Also provide:
 - verdict: "BUILD IT" if >= 7.0, "SKIP IT" if < 5.0, "NEEDS WORK" if 5.0-6.9
 - summary: 1-2 sentences, direct, actionable. Reference only provided info.
 
-EXPERT REACTIONS:
-Generate exactly 3 fictional product leader reactions as if from podcast interviews. Each should:
-- Have a realistic name, role (VP Product, CPO, Head of Product, etc.), and company name
-- Give a 1-2 sentence reaction to this specific feature idea, referencing the user's actual answers
-- Have a stance: "supportive", "cautious", or "critical" — vary them across the 3 experts
-- Sound like real product leaders giving honest, specific feedback — not generic platitudes
-- Reference the company context and specific details from the user's answers
+Respond as JSON: { feature_name, overall_score, verdict, summary, scores: [{ dimension, score, detail }] }`,
+        },
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.4,
+      max_tokens: 1500,
+    }),
 
-Respond as JSON: { feature_name, overall_score, verdict, summary, scores: [{ dimension, score, detail }], reactions: [{ name, role, company, reaction, stance }] }`,
-      },
-    ],
-    response_format: { type: "json_object" },
-    temperature: 0.4,
-    max_tokens: 2000,
-  });
+    // 2. Find relevant podcast experts via vector similarity search (RAG)
+    findRelevantExperts(featureDescription, 3).catch(() => [] as PodcastExpertContext[]),
+  ]);
 
-  let text = response.choices[0]?.message?.content || "{}";
-
-  // Strip markdown code fences if present (GPT often wraps JSON in ```json ... ```)
-  text = text.trim();
-  if (text.startsWith("```")) {
-    text = text.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?\s*```$/, "");
+  // Parse scoring result
+  let scoreText = scoreResponse.choices[0]?.message?.content || "{}";
+  scoreText = scoreText.trim();
+  if (scoreText.startsWith("```")) {
+    scoreText = scoreText.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?\s*```$/, "");
   }
 
+  let scoreData: {
+    feature_name: string;
+    overall_score: number;
+    verdict: string;
+    summary: string;
+    scores: ScoreItem[];
+  };
+
   try {
-    const parsed = JSON.parse(text);
-    // Ensure reactions array exists
-    if (!parsed.reactions || !Array.isArray(parsed.reactions)) {
-      parsed.reactions = [];
-    }
-    return parsed;
+    scoreData = JSON.parse(scoreText);
   } catch {
-    return {
+    scoreData = {
       feature_name: "Feature Analysis",
       overall_score: 5.0,
       verdict: "NEEDS WORK",
@@ -190,7 +194,110 @@ Respond as JSON: { feature_name, overall_score, verdict, summary, scores: [{ dim
         { dimension: "Impact Potential", score: 5, detail: "Insufficient data to score." },
         { dimension: "Measurement Readiness", score: 5, detail: "Insufficient data to score." },
       ],
-      reactions: [],
     };
+  }
+
+  // Generate reactions from REAL podcast experts
+  let reactions: ReactionItem[] = [];
+
+  if (podcastExperts.length > 0) {
+    reactions = await generateReactionsFromPodcast(
+      podcastExperts,
+      featureDescription,
+      company,
+      scoreData.verdict
+    );
+  }
+
+  return {
+    feature_name: scoreData.feature_name,
+    overall_score: scoreData.overall_score,
+    verdict: scoreData.verdict,
+    summary: scoreData.summary,
+    scores: scoreData.scores || [],
+    reactions,
+  };
+}
+
+/**
+ * Generate expert reactions grounded in REAL podcast guest data.
+ * Uses actual guest profiles (name, role, company, quotes, opinions, speaking style)
+ * and relevant transcript chunks found via vector search to produce authentic reactions.
+ */
+async function generateReactionsFromPodcast(
+  experts: PodcastExpertContext[],
+  featureDescription: string,
+  company: { company_name: string; description: string; size: string; industry: string },
+  verdict: string
+): Promise<ReactionItem[]> {
+  // Build context block for each real expert
+  const expertContextBlocks = experts.map((e, i) => {
+    const g = e.guest;
+    const quotes = (g.notable_quotes || []).slice(0, 3).map((q) => `  - "${q}"`).join("\n");
+    const opinions = (g.key_opinions || []).slice(0, 3).map((o) => `  - ${o}`).join("\n");
+    const chunks = e.relevantChunks.map((c) => `  "${c.slice(0, 300)}..."`).join("\n");
+
+    return `EXPERT ${i + 1}:
+- Name: ${g.guest_name}
+- Role: ${g.guest_role || "Product Leader"}
+- Company: ${g.guest_company || "Unknown"}
+- Episode: "${g.episode_title}"
+- Speaking style: ${g.speaking_style || "Direct and analytical"}
+- Key opinions:
+${opinions || "  (none available)"}
+- Notable quotes:
+${quotes || "  (none available)"}
+- Relevant transcript excerpts:
+${chunks || "  (none available)"}`;
+  }).join("\n\n");
+
+  const response = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [
+      {
+        role: "system",
+        content: `You generate expert reactions for a feature validation report. Respond only with valid JSON.
+
+CRITICAL RULES:
+- You are given REAL podcast guests from the Product Builder Podcast. Use their EXACT names, roles, and companies.
+- DO NOT change or invent names, roles, or companies. Use them EXACTLY as provided.
+- Write each reaction in the guest's speaking style, drawing from their real opinions and quotes.
+- Each reaction should feel like something this specific person would actually say, based on their known positions.
+- Reactions must be about the specific feature being evaluated — not generic advice.
+- Vary stances: one should be "supportive", one "cautious", one "critical" (adjust based on the feature verdict).`,
+      },
+      {
+        role: "user",
+        content: `Generate expert reactions for this feature idea from REAL Product Builder Podcast guests.
+
+FEATURE: ${featureDescription}
+COMPANY: ${company.company_name} (${company.description}, ${company.size}, ${company.industry})
+VERDICT: ${verdict}
+
+${expertContextBlocks}
+
+For each expert above, write a 1-2 sentence reaction to this feature idea in their voice/style.
+Use their EXACT name, role, and company. Draw on their known opinions and speaking style.
+Vary stances across experts: "supportive", "cautious", "critical".
+
+Respond as JSON: { reactions: [{ name, role, company, reaction, stance }] }`,
+      },
+    ],
+    response_format: { type: "json_object" },
+    temperature: 0.5,
+    max_tokens: 800,
+  });
+
+  let text = response.choices[0]?.message?.content || "{}";
+  text = text.trim();
+  if (text.startsWith("```")) {
+    text = text.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?\s*```$/, "");
+  }
+
+  try {
+    const parsed = JSON.parse(text);
+    return parsed.reactions || [];
+  } catch {
+    return [];
   }
 }
