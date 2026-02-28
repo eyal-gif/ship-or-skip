@@ -111,7 +111,8 @@ export async function generateReport(
     industry: "Unknown",
   };
 
-  const featureDescription = cap(answers.q1, "");
+  // Idea captured on landing page; fall back to q1 for backward compat
+  const featureDescription = cap(answers.idea || answers.q1, "");
 
   // Run scoring and podcast RAG in parallel for speed
   const [scoreResponse, podcastExperts] = await Promise.all([
@@ -126,7 +127,7 @@ export async function generateReport(
 CRITICAL RULES:
 - ONLY reference information the user actually provided. NEVER invent, assume, or hallucinate features, details, or data the user did not explicitly state.
 - If a question was skipped, say "No information provided" in the detail — do NOT guess what the user might have meant.
-- The feature_name must come directly from what the user described in Q1. Do NOT make up a different feature name.
+- The feature_name must come directly from the Idea description. Do NOT make up a different feature name.
 - Score skipped questions LOW (1-3) and explicitly note the missing information.`,
         },
         {
@@ -139,17 +140,18 @@ CONTEXT:
 - Company: ${company.company_name} (${company.description}, ${company.size}, ${company.industry})
 
 <user_answers>
-- Q1 — Feature & problem (REQUIRED): ${cap(answers.q1, "(skipped)")}
-- Q2 — Supporting data: ${cap(answers.q2, "(not provided)")}
-- Q3 — Expected impact: ${cap(answers.q3, "(not provided)")}
-- Q4 — Target persona: ${cap(answers.q4, "(not provided)")}
+- Idea — Feature/product description (REQUIRED): ${cap(answers.idea || answers.q1, "(skipped)")}
+- Q1 — Problem or opportunity: ${cap(answers.q1, "(not provided)")}
+- Q2 — Supporting evidence/data: ${cap(answers.q2, "(not provided)")}
+- Q3 — Target user/persona: ${cap(answers.q3, "(not provided)")}
+- Q4 — Expected impact: ${cap(answers.q4, "(not provided)")}
 - Q5 — Success measurement: ${cap(answers.q5, "(not provided)")}
 </user_answers>
 
 RULES:
 - Any answer marked "(not provided)" was skipped. Score that dimension 1-3 and note "No information provided."
 - Do NOT guess or fill in gaps. Only reference what the user actually said.
-- feature_name: Extract directly from Q1. Use the user's own words, shortened to 2-5 words.
+- feature_name: Extract directly from the Idea description. Use the user's own words, shortened to 2-5 words.
 
 SCORE across exactly 5 dimensions, each 1-10:
 
@@ -165,7 +167,7 @@ For each dimension provide:
 - detail: one sentence explaining the score (reference ONLY what the user said, or note the gap)
 
 Also provide:
-- feature_name: a clean 2-5 word name extracted from Q1
+- feature_name: a clean 2-5 word name extracted from the Idea
 - overall_score: weighted average (round to 1 decimal)
 - verdict: "BUILD IT" if >= 7.0, "SKIP IT" if < 5.0, "NEEDS WORK" if 5.0-6.9
 - summary: 1-2 sentences, direct, actionable. Reference only provided info.

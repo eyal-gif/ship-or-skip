@@ -7,9 +7,10 @@ type MicState = "idle" | "recording" | "processing" | "done";
 interface MicButtonProps {
   onTranscript: (text: string) => void;
   disabled?: boolean;
+  variant?: "light" | "dark";
 }
 
-export default function MicButton({ onTranscript, disabled }: MicButtonProps) {
+export default function MicButton({ onTranscript, disabled, variant = "light" }: MicButtonProps) {
   const [state, setState] = useState<MicState>("idle");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -150,9 +151,9 @@ export default function MicButton({ onTranscript, disabled }: MicButtonProps) {
 
       <span className={`text-xs font-semibold ${
         state === "recording" ? "text-green-500" :
-        state === "processing" ? "text-gray-400" :
+        state === "processing" ? (variant === "dark" ? "text-gray-500" : "text-gray-400") :
         state === "done" ? "text-green-500" :
-        "text-gray-700"
+        variant === "dark" ? "text-gray-400" : "text-gray-700"
       }`}>
         {state === "recording" ? "Recording..." :
          state === "processing" ? "Processing..." :

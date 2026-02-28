@@ -55,10 +55,11 @@ export async function POST(request: Request) {
 
     const answers = session.answers as Record<string, string | null>;
 
-    // Require at least Q1 (feature description) — can't score nothing
-    if (!answers.q1 || answers.q1.trim().length === 0) {
+    // Require idea description (captured on landing page; fallback to q1 for old sessions)
+    const idea = answers.idea || answers.q1;
+    if (!idea || idea.trim().length === 0) {
       return NextResponse.json(
-        { error: "Please describe your feature before generating a report (Question 1 is required)." },
+        { error: "Please describe your feature idea before generating a report." },
         { status: 400 }
       );
     }

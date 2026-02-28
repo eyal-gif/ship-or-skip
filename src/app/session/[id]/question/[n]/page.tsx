@@ -6,11 +6,11 @@ import MicButton from "@/components/MicButton";
 import ProgressDots from "@/components/ProgressDots";
 
 const QUESTIONS = [
-  "Describe your feature and the problem it solves or opportunity.",
-  "What data supports this?",
-  "What's the expected impact?",
-  "Who is it for? Who's the persona?",
-  "How will you measure success?",
+  "What problem does this solve \u2014 or what opportunity does it unlock?",
+  "What data or evidence supports this?",
+  "Who is this for? Describe the target user.",
+  "What impact do you expect if you build this?",
+  "How will you measure if it worked?",
 ];
 
 export default function QuestionPage() {
@@ -59,9 +59,6 @@ export default function QuestionPage() {
   };
 
   const handleSkip = async () => {
-    // Q1 (feature description) is required — can't score without it
-    if (questionNum === 1) return;
-
     await saveAnswer(null);
 
     if (isLast) {
@@ -130,18 +127,14 @@ export default function QuestionPage() {
 
             {/* Actions */}
             <div className="flex justify-between items-center mt-4 pt-3 border-t border-gray-100">
-              {questionNum === 1 ? (
-                <span className="text-[11px] text-gray-300">Required</span>
-              ) : (
-                <button
-                  onClick={handleSkip}
-                  disabled={saving}
-                  className="text-sm text-gray-400 hover:text-gray-600 transition-colors
-                             disabled:opacity-50"
-                >
-                  Skip
-                </button>
-              )}
+              <button
+                onClick={handleSkip}
+                disabled={saving}
+                className="text-sm text-gray-400 hover:text-gray-600 transition-colors
+                           disabled:opacity-50"
+              >
+                Skip
+              </button>
 
               <button
                 onClick={handleNext}

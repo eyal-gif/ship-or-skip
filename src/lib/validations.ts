@@ -1,6 +1,8 @@
 import { z } from "zod";
 
-export const createSessionSchema = z.object({}).strict();
+export const createSessionSchema = z.object({
+  ideaDescription: z.string().min(10).max(1000),
+});
 
 export const updateSessionSchema = z.object({
   questionKey: z.enum(["q1", "q2", "q3", "q4", "q5"]),
