@@ -7,6 +7,7 @@ import { enrichCompany } from "@/lib/openai";
 import { extractDomain } from "@/lib/utils";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { verifyOrigin, sanitizeDomain } from "@/lib/security";
+import { notifyNewLead } from "@/lib/telegram";
 
 const FREE_EMAIL_DOMAINS = new Set([
   "gmail.com", "yahoo.com", "hotmail.com", "outlook.com",
@@ -78,6 +79,16 @@ export async function POST(request: Request) {
       .update(sessions)
       .set({ status: "email_captured" })
       .where(eq(sessions.id, sessionId));
+
+    // Telegram notification (fire-and-forget)
+    const companyName = (companyData as { company_name?: string } | null)?.company_name || null;
+    notifyNewLead({
+      name: name || null,
+      email,
+      domain,
+      companyName,
+      featureName: null, // not yet available — report hasn't been generated
+    }).catch(() => {});
 
     return NextResponse.json({
       leadId: lead.id,
