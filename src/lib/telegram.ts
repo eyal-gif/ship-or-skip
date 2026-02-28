@@ -12,7 +12,10 @@ export async function notifyNewLead(lead: {
   companyName: string | null;
   featureName: string | null;
 }) {
-  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+    console.warn("[Telegram] Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID — skipping notification");
+    return;
+  }
 
   const lines = [
     `🚀 *New Lead — Product Builder*`,
@@ -25,7 +28,7 @@ export async function notifyNewLead(lead: {
   ].filter(Boolean).join("\n");
 
   try {
-    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -34,8 +37,13 @@ export async function notifyNewLead(lead: {
         parse_mode: "MarkdownV2",
       }),
     });
-  } catch {
-    // Non-blocking — don't break lead creation if Telegram fails
+
+    if (!res.ok) {
+      const errBody = await res.text();
+      console.error("[Telegram] sendMessage failed:", res.status, errBody);
+    }
+  } catch (err) {
+    console.error("[Telegram] fetch error:", err);
   }
 }
 
