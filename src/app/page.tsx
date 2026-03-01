@@ -8,15 +8,21 @@ export default function Landing() {
   const router = useRouter();
   const [idea, setIdea] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleStart = async () => {
-    if (!idea.trim() || idea.trim().length < 10) return;
+    const trimmed = idea.trim();
+    if (trimmed.length < 10) {
+      setError("Please describe your idea in at least 10 characters.");
+      return;
+    }
+    setError("");
     setLoading(true);
     try {
       const res = await fetch("/api/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ideaDescription: idea.trim() }),
+        body: JSON.stringify({ ideaDescription: trimmed }),
       });
       if (!res.ok) throw new Error("Failed to create session");
       const { sessionId } = await res.json();
@@ -27,7 +33,6 @@ export default function Landing() {
   };
 
   const charCount = idea.length;
-  const canStart = idea.trim().length >= 10;
 
   return (
     <div className="min-h-dvh bg-[#111] text-white">
@@ -62,7 +67,7 @@ export default function Landing() {
         <div className="bg-[#333] rounded-2xl p-4 border border-[#2A2A2A]">
           <textarea
             value={idea}
-            onChange={(e) => setIdea(e.target.value)}
+            onChange={(e) => { setIdea(e.target.value); setError(""); }}
             placeholder="What product or feature are you considering building?"
             maxLength={1000}
             className="w-full bg-[#222] border border-[#444] rounded-xl px-3.5 py-3
@@ -86,7 +91,7 @@ export default function Landing() {
           <div className="flex items-center justify-between">
             <span className="text-xs text-[#666]">Speak your idea</span>
             <MicButton
-              onTranscript={(text) => setIdea(text)}
+              onTranscript={(text) => { setIdea(text); setError(""); }}
               disabled={loading}
               variant="dark"
             />
@@ -96,7 +101,7 @@ export default function Landing() {
         {/* ── Start Validation ── */}
         <button
           onClick={handleStart}
-          disabled={loading || !canStart}
+          disabled={loading}
           className="w-full mt-4 bg-[#FF6B35] hover:bg-[#e55a28] text-white font-bold text-base
                      py-4 rounded-full transition-colors duration-200
                      disabled:opacity-40 disabled:cursor-not-allowed
@@ -111,6 +116,10 @@ export default function Landing() {
             "Start Validation"
           )}
         </button>
+
+        {error && (
+          <p className="text-red-400 text-xs text-center mt-2">{error}</p>
+        )}
 
         <p className="text-gray-500 text-[11.5px] text-center mt-3">
           Free &middot; 3 minutes &middot; Shareable report
