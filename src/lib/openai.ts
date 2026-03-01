@@ -10,7 +10,23 @@ const openai = new OpenAI({
 const MAX_ANSWER_LEN = 2000;
 function cap(s: string | null, fallback: string): string {
   if (!s) return fallback;
-  return s.length > MAX_ANSWER_LEN ? s.slice(0, MAX_ANSWER_LEN) + "..." : s;
+  const trimmed = s.length > MAX_ANSWER_LEN ? s.slice(0, MAX_ANSWER_LEN) + "..." : s;
+  return sanitizeForPrompt(trimmed);
+}
+
+/**
+ * Sanitize user input before inserting into LLM prompts.
+ * Prevents prompt injection via XML-like tag manipulation and
+ * instruction override attempts.
+ */
+function sanitizeForPrompt(text: string): string {
+  // Strip XML/HTML-like tags that could close our delimiter blocks
+  // e.g. </user_answers>, </feature_context>, <system>, etc.
+  return text
+    .replace(/<\/?[a-zA-Z_][a-zA-Z0-9_]*\s*\/?>/g, "")
+    // Also strip common injection patterns
+    .replace(/\[SYSTEM\b/gi, "[FILTERED")
+    .replace(/\[INST\b/gi, "[FILTERED");
 }
 
 export async function transcribeAudio(audioBuffer: ArrayBuffer, mimeType: string): Promise<string> {

@@ -53,21 +53,30 @@ export function rateLimit(
 
 /**
  * Extract a reliable client IP from request headers.
- * On Vercel, x-real-ip is set by the platform and cannot be spoofed.
- * Falls back to first entry of x-forwarded-for, then to a shared key.
+ * On Vercel, x-real-ip is set by the platform and cannot be spoofed
+ * by the end-user — it is injected by the edge network.
+ *
+ * IMPORTANT: x-forwarded-for CAN be spoofed by clients, so we only
+ * use it in non-production or when x-real-ip is missing. In production
+ * on Vercel, x-real-ip is always present and trustworthy.
  */
 export function getClientIp(request: Request): string {
-  // Vercel sets x-real-ip reliably
+  // Vercel sets x-real-ip reliably — prefer it always
   const realIp = request.headers.get("x-real-ip");
   if (realIp) return realIp;
 
-  // Fallback: first hop in x-forwarded-for (leftmost = client)
+  // In production, if x-real-ip is absent something is off — use
+  // a strict shared key so these requests share a very tight limit.
+  if (process.env.NODE_ENV === "production") {
+    return "__no_ip__";
+  }
+
+  // Development only: fall back to x-forwarded-for (first hop)
   const forwarded = request.headers.get("x-forwarded-for");
   if (forwarded) {
     const first = forwarded.split(",")[0]?.trim();
     if (first) return first;
   }
 
-  // Last resort: rate-limit all unknown sources under one key
-  return "__unknown_ip__";
+  return "127.0.0.1";
 }

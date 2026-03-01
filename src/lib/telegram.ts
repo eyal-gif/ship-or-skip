@@ -17,15 +17,16 @@ export async function notifyNewLead(lead: {
     return;
   }
 
+  // Use HTML parse mode — much more forgiving than MarkdownV2
   const lines = [
-    `🚀 *New Lead — Product Builder*`,
+    `🚀 <b>New Lead — Product Builder</b>`,
     ``,
-    `*Name:* ${esc(lead.name || "—")}`,
-    `*Email:* ${esc(lead.email)}`,
-    lead.domain ? `*Domain:* ${esc(lead.domain)}` : null,
-    lead.companyName ? `*Company:* ${esc(lead.companyName)}` : null,
-    lead.featureName ? `*Feature:* ${esc(lead.featureName)}` : null,
-  ].filter(Boolean).join("\n");
+    `<b>Name:</b> ${esc(lead.name || "—")}`,
+    `<b>Email:</b> ${esc(lead.email)}`,
+    lead.domain ? `<b>Domain:</b> ${esc(lead.domain)}` : null,
+    lead.companyName ? `<b>Company:</b> ${esc(lead.companyName)}` : null,
+    lead.featureName ? `<b>Feature:</b> ${esc(lead.featureName)}` : null,
+  ].filter((line): line is string => line !== null).join("\n");
 
   try {
     const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
@@ -34,7 +35,7 @@ export async function notifyNewLead(lead: {
       body: JSON.stringify({
         chat_id: TELEGRAM_CHAT_ID,
         text: lines,
-        parse_mode: "MarkdownV2",
+        parse_mode: "HTML",
       }),
     });
 
@@ -47,7 +48,10 @@ export async function notifyNewLead(lead: {
   }
 }
 
-/** Escape special characters for Telegram MarkdownV2 */
+/** Escape special characters for Telegram HTML mode */
 function esc(text: string): string {
-  return text.replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, "\\$1");
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }

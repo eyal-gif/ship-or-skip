@@ -8,19 +8,36 @@ const ALLOWED_SIZES = ["startup", "smb", "mid-market", "enterprise", "Unknown"];
 /**
  * CSRF protection: verify the request Origin matches the app.
  * Returns true if the request is safe, false if it should be blocked.
+ *
+ * State-changing requests (POST, PATCH, PUT, DELETE) MUST include
+ * a valid Origin or Referer header. Requests with neither are blocked
+ * to prevent cross-origin form attacks from file:// or data: origins.
  */
 export function verifyOrigin(request: Request): boolean {
   const origin = request.headers.get("origin");
   const referer = request.headers.get("referer");
 
-  // Allow requests with no Origin (same-origin non-CORS, e.g. server-side)
+  // State-changing methods MUST have Origin or Referer — no exceptions.
+  // This blocks cross-site form POSTs from file://, data:, and
+  // privacy-stripping contexts that omit both headers.
+  const method = request.method.toUpperCase();
+  const isMutation = ["POST", "PATCH", "PUT", "DELETE"].includes(method);
+
+  if (isMutation && !origin && !referer) {
+    return false;
+  }
+
+  // Safe methods (GET, HEAD, OPTIONS) without Origin/Referer are fine
   if (!origin && !referer) return true;
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  const allowedOrigins = new Set<string>([
-    new URL(appUrl).origin,
-    "http://localhost:3000",
-  ]);
+  const allowedOrigins = new Set<string>([new URL(appUrl).origin]);
+
+  // Only allow localhost in development
+  if (process.env.NODE_ENV !== "production") {
+    allowedOrigins.add("http://localhost:3000");
+    allowedOrigins.add("http://localhost:3001");
+  }
 
   // Vercel auto-sets several URL env vars — each can differ:
   //   VERCEL_URL: deployment-specific URL (e.g. my-app-abc123-team.vercel.app)

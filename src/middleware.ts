@@ -2,7 +2,17 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
-  const response = NextResponse.next();
+  // Generate a per-request nonce for inline scripts
+  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+
+  const response = NextResponse.next({
+    request: {
+      headers: new Headers(request.headers),
+    },
+  });
+
+  // Pass nonce to server components via header
+  response.headers.set("x-nonce", nonce);
 
   // Security headers
   response.headers.set("X-Content-Type-Options", "nosniff");
@@ -23,8 +33,10 @@ export function middleware(request: NextRequest) {
     "Content-Security-Policy",
     [
       "default-src 'self'",
-      // Next.js requires unsafe-inline for styles; removed unsafe-eval
-      "script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com",
+      // Nonce-based script policy — blocks arbitrary inline scripts
+      // 'strict-dynamic' lets nonce-approved scripts load their children
+      `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://accounts.google.com https://apis.google.com`,
+      // Styles still need unsafe-inline (Tailwind / Next.js injects styles)
       "style-src 'self' 'unsafe-inline' https://accounts.google.com",
       // Tightened img-src: only self, data URIs, Google profile pics
       "img-src 'self' data: blob: https://lh3.googleusercontent.com",
@@ -32,6 +44,10 @@ export function middleware(request: NextRequest) {
       // Removed api.openai.com (server-side only, not needed in CSP)
       "connect-src 'self' https://accounts.google.com",
       "frame-src https://accounts.google.com",
+      // Prevent <base> tag hijacking
+      "base-uri 'self'",
+      // Restrict form targets
+      "form-action 'self'",
     ].join("; ")
   );
 
