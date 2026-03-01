@@ -2,17 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
-  // Generate a per-request nonce for inline scripts
-  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
-
-  const response = NextResponse.next({
-    request: {
-      headers: new Headers(request.headers),
-    },
-  });
-
-  // Pass nonce to server components via header
-  response.headers.set("x-nonce", nonce);
+  const response = NextResponse.next();
 
   // Security headers
   response.headers.set("X-Content-Type-Options", "nosniff");
@@ -29,24 +19,23 @@ export function middleware(request: NextRequest) {
     "Permissions-Policy",
     "camera=(), geolocation=(), microphone=(self)"
   );
+  // CSP: Next.js requires 'unsafe-inline' for its hydration scripts.
+  // Nonce-based CSP needs full Next.js integration (layout + config) —
+  // not worth the complexity for this app right now.
+  // We still tighten everything else: base-uri, form-action, connect-src, etc.
   response.headers.set(
     "Content-Security-Policy",
     [
       "default-src 'self'",
-      // Nonce-based script policy — blocks arbitrary inline scripts
-      // 'strict-dynamic' lets nonce-approved scripts load their children
-      `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://accounts.google.com https://apis.google.com`,
-      // Styles still need unsafe-inline (Tailwind / Next.js injects styles)
+      "script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com",
       "style-src 'self' 'unsafe-inline' https://accounts.google.com",
-      // Tightened img-src: only self, data URIs, Google profile pics
       "img-src 'self' data: blob: https://lh3.googleusercontent.com",
       "font-src 'self'",
-      // Removed api.openai.com (server-side only, not needed in CSP)
       "connect-src 'self' https://accounts.google.com",
       "frame-src https://accounts.google.com",
       // Prevent <base> tag hijacking
       "base-uri 'self'",
-      // Restrict form targets
+      // Restrict form targets to same origin
       "form-action 'self'",
     ].join("; ")
   );
