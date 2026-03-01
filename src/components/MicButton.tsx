@@ -8,9 +8,16 @@ interface MicButtonProps {
   onTranscript: (text: string) => void;
   disabled?: boolean;
   variant?: "light" | "dark";
+  /** "default" = 72px circle with label, "small" = 44px inline circle, no label */
+  size?: "default" | "small";
 }
 
-export default function MicButton({ onTranscript, disabled, variant = "light" }: MicButtonProps) {
+export default function MicButton({
+  onTranscript,
+  disabled,
+  variant = "light",
+  size = "default",
+}: MicButtonProps) {
   const [state, setState] = useState<MicState>("idle");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -107,35 +114,46 @@ export default function MicButton({ onTranscript, disabled, variant = "light" }:
     }
   };
 
+  const isSmall = size === "small";
+  const btnSize = isSmall ? "w-11 h-11" : "w-[72px] h-[72px]";
+  const iconSize = isSmall ? 18 : 30;
+  const spinnerSize = isSmall ? "w-4 h-4" : "w-6 h-6";
+
+  const bgClass =
+    state === "recording"
+      ? isSmall
+        ? "bg-green-500"
+        : "bg-green-500 shadow-[0_0_0_8px_rgba(34,197,94,0.15),0_0_0_16px_rgba(34,197,94,0.05)]"
+      : state === "done"
+        ? "bg-green-500"
+        : state === "processing"
+          ? "bg-gray-400"
+          : isSmall
+            ? "bg-[#333] border-2 border-[#888] hover:bg-[#444] hover:border-[#aaa]"
+            : "bg-[#FF6B35] shadow-[0_0_0_8px_rgba(255,107,53,0.1)] hover:shadow-[0_0_0_8px_rgba(255,107,53,0.2)]";
+
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className={`flex ${isSmall ? "items-center" : "flex-col items-center gap-2"}`}>
       <button
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerUp}
         disabled={disabled || state === "processing"}
         className={`
-          relative w-[72px] h-[72px] rounded-full flex items-center justify-center
+          relative ${btnSize} rounded-full flex items-center justify-center
           transition-all duration-200 select-none touch-none
-          ${state === "recording"
-            ? "bg-green-500 shadow-[0_0_0_8px_rgba(34,197,94,0.15),0_0_0_16px_rgba(34,197,94,0.05)]"
-            : state === "done"
-              ? "bg-green-500"
-              : state === "processing"
-                ? "bg-gray-400"
-                : "bg-[#FF6B35] shadow-[0_0_0_8px_rgba(255,107,53,0.1)] hover:shadow-[0_0_0_8px_rgba(255,107,53,0.2)]"
-          }
+          ${bgClass}
           ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
         `}
       >
         {state === "processing" ? (
-          <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          <div className={`${spinnerSize} border-2 border-white border-t-transparent rounded-full animate-spin`} />
         ) : state === "done" ? (
-          <svg width={30} height={30} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+          <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12" />
           </svg>
         ) : (
-          <svg width={30} height={30} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+          <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill={isSmall && state === "idle" ? "white" : "none"} stroke={isSmall && state === "idle" ? "none" : "white"} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
             <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
             <line x1="12" y1="19" x2="12" y2="23" />
@@ -144,22 +162,24 @@ export default function MicButton({ onTranscript, disabled, variant = "light" }:
         )}
 
         {/* Pulsing ring for recording */}
-        {state === "recording" && (
+        {state === "recording" && !isSmall && (
           <div className="absolute inset-0 rounded-full border-2 border-green-500 animate-ping opacity-30" />
         )}
       </button>
 
-      <span className={`text-xs font-semibold ${
-        state === "recording" ? "text-green-500" :
-        state === "processing" ? (variant === "dark" ? "text-gray-500" : "text-gray-400") :
-        state === "done" ? "text-green-500" :
-        variant === "dark" ? "text-gray-400" : "text-gray-700"
-      }`}>
-        {state === "recording" ? "Recording..." :
-         state === "processing" ? "Processing..." :
-         state === "done" ? "Recorded. Tap to redo." :
-         "Hold to speak"}
-      </span>
+      {!isSmall && (
+        <span className={`text-xs font-semibold ${
+          state === "recording" ? "text-green-500" :
+          state === "processing" ? (variant === "dark" ? "text-gray-500" : "text-gray-400") :
+          state === "done" ? "text-green-500" :
+          variant === "dark" ? "text-gray-400" : "text-gray-700"
+        }`}>
+          {state === "recording" ? "Recording..." :
+           state === "processing" ? "Processing..." :
+           state === "done" ? "Recorded. Tap to redo." :
+           "Hold to speak"}
+        </span>
+      )}
     </div>
   );
 }
